@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <ComponentGroup Id="ManifestGroup" Directory="INSTALLFOLDER">
+      <Component Id="ExeManifest" Guid="*">
+        <File Id="AppExeManifest"
+              Name="reset-graphics-for-rdp.exe.manifest"
+              Source="$(var.ProjectDir)..\\src-tauri\\manifest\\app.manifest"/>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

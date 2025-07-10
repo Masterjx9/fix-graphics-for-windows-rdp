@@ -1,0 +1,82 @@
+name: Build and Release (Tauri)
+
+on:
+  push:
+    branches: [release]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install build tooling
+        run: |
+          npm install -g pnpm @tauri-apps/cli
+          choco install nsis -y
+
+      - name: Install npm deps
+        run: pnpm install
+
+      - name: Build Tauri app
+        run: pnpm tauri build
+
+      - name: Collect artefacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path artefacts
+          Copy-Item -Path "src-tauri/target/release/reset-graphics-for-rdp.exe"               -Destination artefacts/
+          Copy-Item -Path "src-tauri/target/release/bundle/msi/*.msi"                        -Destination artefacts/
+          Copy-Item -Path "src-tauri/target/release/bundle/nsis/*.exe"                       -Destination artefacts/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tauri-windows
+          path: artefacts/*
+
+  create-release:
+    needs: build-windows
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tauri-windows
+          path: ./release-assets
+
+      - id: relinfo
+        run: |
+          msg=$(git log -1 --pretty=%B)
+          if [[ "$msg" =~ ^Release[[:space:]]+([0-9\.]+) ]]; then
+            echo "tag=${BASH_REMATCH[1]}" >>"$GITHUB_OUTPUT"
+            echo "name=Release ${BASH_REMATCH[1]}" >>"$GITHUB_OUTPUT"
+          else
+            ts=$(date +'%Y%m%d%H%M%S')
+            echo "tag=build-$ts"   >>"$GITHUB_OUTPUT"
+            echo "name=Build $ts"  >>"$GITHUB_OUTPUT"
+          fi
+
+      - uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.relinfo.outputs.tag }}
+          name:     ${{ steps.relinfo.outputs.name }}
+          draft:    false
+          files: |
+            release-assets/reset-graphics-for-rdp.exe
+            release-assets/*.msi
+            release-assets/*setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

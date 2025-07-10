@@ -1,0 +1,26 @@
+[package]
+name = "reset-graphics-for-rdp"
+version = "0.1.0"
+description = "An open source application that helps you reset your graphics card for Windows RDP sessions. This is useful for applications that require the main GPU on the device rather than the virtual display adapter used by RDP."
+
+authors = ["Jaton Justice"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "reset_graphics_for_rdp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+wmi = "0.13"
