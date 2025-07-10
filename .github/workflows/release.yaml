@@ -1,3 +1,4 @@
+# .github/workflows/release.yml  ← keep the filename you chose
 name: Tauri Build & Release (Windows)
 
 on:
@@ -5,17 +6,14 @@ on:
     branches: [release]
 
 permissions:
-  contents: write        # lets actions/create-release publish the release
+  contents: write         # required by actions/create-release + upload-asset
 
 jobs:
   build-windows:
     runs-on: windows-latest
-
     steps:
-      # ---------- checkout ----------
       - uses: actions/checkout@v4
 
-      # ---------- tooling ----------
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
 
@@ -30,21 +28,19 @@ jobs:
           npm i -g pnpm @tauri-apps/cli
           choco install nsis -y
 
-      # ---------- build ----------
       - name: Install project deps
         run: pnpm install
 
       - name: Tauri build (release)
         run: pnpm tauri build
 
-      # ---------- collect artefacts ----------
-      - name: Bundle release files
+      - name: Gather release files
         shell: pwsh
         run: |
           New-Item artefacts -ItemType Directory | Out-Null
-          Copy-Item "src-tauri/target/release/reset-graphics-for-rdp.exe"      artefacts/
-          Copy-Item "src-tauri/target/release/bundle/msi/*.msi"               artefacts/
-          Copy-Item "src-tauri/target/release/bundle/nsis/*setup.exe"         artefacts/
+          Copy-Item src-tauri/target/release/reset-graphics-for-rdp.exe      artefacts/
+          Copy-Item src-tauri/target/release/bundle/msi/*.msi                artefacts/
+          Copy-Item src-tauri/target/release/bundle/nsis/*setup.exe          artefacts/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -54,7 +50,6 @@ jobs:
   create_release:
     needs: build-windows
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +59,6 @@ jobs:
           name: tauri-build
           path: release-assets
 
-      # ----- figure out tag / name the way you did -----
       - id: relinfo
         run: |
           msg=$(git log -1 --pretty=%B)
@@ -77,21 +71,21 @@ jobs:
             echo "RELEASE_NAME=Build $ts"            >> $GITHUB_ENV
           fi
 
-      # ----- create the release -----
       - id: create_release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name:   ${{ env.TAG_NAME }}
+          tag_name:     ${{ env.TAG_NAME }}
           release_name: ${{ env.RELEASE_NAME }}
           draft: false
           prerelease: false
 
-      # ----- attach the binaries -----
-      - name: Upload reset-graphics-for-rdp.exe
+      # -------- attach binaries (three separate calls) --------
+      - name: Upload exe
         uses: actions/upload-release-asset@v1
-        env:   { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
           asset_path: release-assets/reset-graphics-for-rdp.exe
@@ -100,20 +94,20 @@ jobs:
 
       - name: Upload MSI
         uses: actions/upload-release-asset@v1
-        env:   { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: |
-            release-assets/*.msi
+          asset_path: $(ls release-assets/*.msi)
           asset_name: reset-graphics-for-rdp.msi
           asset_content_type: application/octet-stream
 
       - name: Upload NSIS installer
         uses: actions/upload-release-asset@v1
-        env:   { GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: |
-            release-assets/*setup.exe
+          asset_path: $(ls release-assets/*setup.exe)
           asset_name: reset-graphics-for-rdp-setup.exe
           asset_content_type: application/octet-stream
