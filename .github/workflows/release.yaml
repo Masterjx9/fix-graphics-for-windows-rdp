@@ -2,7 +2,7 @@ name: Build and Release (Tauri)
 
 on:
   push:
-    branches: [release]
+    branches: [main]
 
 jobs:
   build-windows:
