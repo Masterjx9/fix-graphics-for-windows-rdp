@@ -3,7 +3,7 @@ name: Tauri Build & Release (Windows)
 
 on:
   push:
-    branches: [release]
+    branches: [main]
 
 permissions:
   contents: write         # required by actions/create-release + upload-asset
